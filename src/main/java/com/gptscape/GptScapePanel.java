@@ -318,7 +318,7 @@ public class GptScapePanel extends PluginPanel
 		JPopupMenu menu = new JPopupMenu();
 
 		JCheckBoxMenuItem web = new JCheckBoxMenuItem("Web access", config.internet());
-		web.setToolTipText("Let GPTScape search the web, read OSRS news and check live GE prices");
+		web.setToolTipText("Let GPTScape search the web, read OSRS news and check GE prices");
 		web.addActionListener(e -> configManager.setConfiguration(GptScapeConfig.GROUP, "internet", web.isSelected()));
 		menu.add(web);
 

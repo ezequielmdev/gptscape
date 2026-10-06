@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.game.ItemManager;
+import net.runelite.http.api.item.ItemPrice;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,11 +35,15 @@ public class WebTools
 {
 	private static final String BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 		+ "(KHTML, like Gecko) Chrome/130.0 Safari/537.36";
-	private static final String WIKI_UA = "GPTScape-RuneLite/1.0 (RuneLite plugin)";
 	private static final String NEWS_URL = "https://secure.runescape.com/m=news/archive?oldschool=1";
-	private static final String WIKI_API = "https://oldschool.runescape.wiki/api.php";
-	private static final String WIKI_PAGE = "https://oldschool.runescape.wiki/w/";
-	private static final String PRICES_API = "https://prices.runescape.wiki/api/v1/osrs/";
+	/**
+	 * A política de IA generativa da RuneScape Wiki não permite usar o conteúdo dela com IA
+	 * (https://meta.runescape.wiki/w/Meta:Generative_AI_policy): o plugin nunca lê nada desse domínio.
+	 */
+	private static final String WIKI_DOMAIN = "runescape.wiki";
+	static final String WIKI_REFUSAL = "The RuneScape Wiki does not allow its content to be used with generative AI, "
+		+ "so its pages cannot be read here. You may give the player the link to open themselves.";
+	private static final int MAX_PRICE_RESULTS = 6;
 	private static final int MAX_PAGE_CHARS = 12000;
 
 	private static final Pattern NEWS_ARTICLE = Pattern.compile(
@@ -52,11 +58,16 @@ public class WebTools
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 
-	/** Lista de itens do GE (id, nome, limite), baixada uma vez por sessão. */
-	private volatile JsonArray itemMapping;
+	/** Preços do próprio RuneLite; null fora do cliente (testes e ferramentas de desenvolvimento). */
+	private final ItemManager itemManager;
+
+	WebTools(OkHttpClient httpClient, Gson gson)
+	{
+		this(httpClient, gson, null);
+	}
 
 	@Inject
-	WebTools(OkHttpClient httpClient, Gson gson)
+	WebTools(OkHttpClient httpClient, Gson gson, ItemManager itemManager)
 	{
 		this.httpClient = httpClient.newBuilder()
 			.connectTimeout(10, TimeUnit.SECONDS)
@@ -64,6 +75,7 @@ public class WebTools
 			.followRedirects(true)
 			.build();
 		this.gson = gson;
+		this.itemManager = itemManager;
 	}
 
 	/** Ferramentas no formato nativo da API do Gemini: {"functionDeclarations": [...]}. */
@@ -78,16 +90,13 @@ public class WebTools
 			"Lists the latest official Old School RuneScape news and updates (Jagex website), with date, "
 				+ "category, summary and link. Use it for questions about updates, patch notes and events.",
 			null, null));
-		tools.add(tool("osrs_wiki",
-			"Searches the official Old School RuneScape Wiki and returns the most relevant article. "
-				+ "Use it for items, monsters, bosses, quests, skills, gear and strategies.",
-			"query", "Item, monster, quest or topic name in English (e.g. 'Theatre of Blood/Strategies')."));
 		tools.add(tool("ge_price",
-			"Real-time Grand Exchange price of an OSRS item (Wiki data). Always use it for questions about "
-				+ "an item's price, value or cost.",
+			"Current Grand Exchange price of an OSRS item, from RuneLite's own price data. Always use it for "
+				+ "questions about an item's price, value or cost.",
 			"item", "Item name in English (e.g. 'Twisted bow', 'Abyssal whip')."));
 		tools.add(tool("open_page",
-			"Opens a web page and returns its text. Use it to read a link found in a search or a full news post.",
+			"Opens a web page and returns its text. Use it to read a link found in a search or a full news post. "
+				+ "It cannot open RuneScape Wiki pages.",
 			"url", "Full address starting with https://"));
 
 		JsonObject declarations = new JsonObject();
@@ -129,8 +138,6 @@ public class WebTools
 				return "Searching: " + arg(args, "query");
 			case "osrs_news":
 				return "Reading OSRS news";
-			case "osrs_wiki":
-				return "Checking the OSRS Wiki: " + arg(args, "query");
 			case "ge_price":
 				return "Checking price: " + arg(args, "item");
 			case "open_page":
@@ -152,8 +159,6 @@ public class WebTools
 					return webSearch(arg(args, "query"));
 				case "osrs_news":
 					return osrsNews();
-				case "osrs_wiki":
-					return osrsWiki(arg(args, "query"));
 				case "ge_price":
 					return gePrice(arg(args, "item"));
 				case "open_page":
@@ -190,6 +195,10 @@ public class WebTools
 			if (link.contains("duckduckgo.com/y.js"))
 			{
 				continue; // anúncio
+			}
+			if (isWiki(link))
+			{
+				continue; // o trecho do resultado é conteúdo da wiki
 			}
 			count++;
 			sb.append(count).append(". ").append(htmlToText(m.group(2))).append('\n')
@@ -245,150 +254,49 @@ public class WebTools
 		return sb.append("Use open_page with the link to read the full post.").toString();
 	}
 
-	private String osrsWiki(String query) throws IOException
-	{
-		if (query.isEmpty())
-		{
-			return "Empty query.";
-		}
-
-		HttpUrl searchUrl = HttpUrl.parse(WIKI_API).newBuilder()
-			.addQueryParameter("action", "query")
-			.addQueryParameter("list", "search")
-			.addQueryParameter("srsearch", query)
-			.addQueryParameter("srlimit", "5")
-			.addQueryParameter("format", "json")
-			.build();
-		JsonArray results = gson.fromJson(get(searchUrl.toString(), WIKI_UA), JsonObject.class)
-			.getAsJsonObject("query").getAsJsonArray("search");
-		if (results.size() == 0)
-		{
-			return "Nothing found on the OSRS Wiki for \"" + query + "\".";
-		}
-
-		String title = results.get(0).getAsJsonObject().get("title").getAsString();
-		HttpUrl extractUrl = HttpUrl.parse(WIKI_API).newBuilder()
-			.addQueryParameter("action", "query")
-			.addQueryParameter("prop", "extracts")
-			.addQueryParameter("explaintext", "1")
-			.addQueryParameter("redirects", "1")
-			.addQueryParameter("titles", title)
-			.addQueryParameter("format", "json")
-			.build();
-		JsonObject pages = gson.fromJson(get(extractUrl.toString(), WIKI_UA), JsonObject.class)
-			.getAsJsonObject("query").getAsJsonObject("pages");
-		String extract = "";
-		for (java.util.Map.Entry<String, JsonElement> e : pages.entrySet())
-		{
-			JsonElement ex = e.getValue().getAsJsonObject().get("extract");
-			if (ex != null && !ex.isJsonNull())
-			{
-				extract = ex.getAsString();
-			}
-		}
-
-		StringBuilder sb = new StringBuilder("OSRS Wiki - ").append(title).append('\n')
-			.append(WIKI_PAGE).append(title.replace(' ', '_')).append("\n\n")
-			.append(truncate(extract.replaceAll("\n{3,}", "\n\n"), MAX_PAGE_CHARS));
-
-		if (results.size() > 1)
-		{
-			sb.append("\n\nRelated articles: ");
-			for (int i = 1; i < results.size(); i++)
-			{
-				sb.append(i > 1 ? ", " : "").append(results.get(i).getAsJsonObject().get("title").getAsString());
-			}
-		}
-		return sb.toString();
-	}
-
-	private String gePrice(String item) throws IOException
+	/** Preço pelo ItemManager do RuneLite: não faz nenhuma requisição. */
+	private String gePrice(String item)
 	{
 		if (item.isEmpty())
 		{
 			return "Empty item name.";
 		}
-		if (itemMapping == null)
+		if (itemManager == null)
 		{
-			itemMapping = gson.fromJson(get(PRICES_API + "mapping", WIKI_UA), JsonArray.class);
+			return "Item prices are only available inside RuneLite.";
 		}
 
-		String wanted = item.toLowerCase().trim();
-		List<JsonObject> matches = new ArrayList<>();
-		for (JsonElement el : itemMapping)
+		String wanted = item.toLowerCase(Locale.ROOT);
+		List<ItemPrice> matches = new ArrayList<>();
+		for (ItemPrice price : itemManager.search(item))
 		{
-			JsonObject o = el.getAsJsonObject();
-			String name = o.get("name").getAsString().toLowerCase();
-			if (name.equals(wanted))
+			if (price.getName().toLowerCase(Locale.ROOT).equals(wanted))
 			{
-				matches.add(0, o);
+				matches.add(0, price);
 			}
-			else if (name.contains(wanted) && matches.size() < 6)
+			else
 			{
-				matches.add(o);
+				matches.add(price);
 			}
 		}
 		if (matches.isEmpty())
 		{
 			return "Item \"" + item + "\" not found on the Grand Exchange. Check the English item name.";
 		}
-		if (matches.size() > 6)
-		{
-			matches = matches.subList(0, 6);
-		}
 
-		// A API aceita só um id por consulta
-		JsonObject latest = new JsonObject();
-		for (JsonObject o : matches)
+		StringBuilder sb = new StringBuilder("Grand Exchange prices (RuneLite price data):\n\n");
+		for (ItemPrice price : matches.subList(0, Math.min(matches.size(), MAX_PRICE_RESULTS)))
 		{
-			String id = o.get("id").getAsString();
-			JsonObject data = gson.fromJson(get(PRICES_API + "latest?id=" + id, WIKI_UA), JsonObject.class)
-				.getAsJsonObject("data");
-			if (data != null && data.has(id))
-			{
-				latest.add(id, data.get(id));
-			}
-		}
-
-		StringBuilder sb = new StringBuilder("Real-time Grand Exchange prices (prices.runescape.wiki):\n\n");
-		long now = System.currentTimeMillis() / 1000;
-		for (JsonObject o : matches)
-		{
-			String id = o.get("id").getAsString();
-			sb.append("- ").append(o.get("name").getAsString()).append(" (id ").append(id).append(")\n");
-			JsonObject p = latest != null ? latest.getAsJsonObject(id) : null;
-			if (p == null)
-			{
-				sb.append("  No recent trades.\n");
-				continue;
-			}
-			appendPrice(sb, "Instant buy (high)", p, "high", "highTime", now);
-			appendPrice(sb, "Instant sell (low)", p, "low", "lowTime", now);
-			if (o.has("limit"))
-			{
-				sb.append("  Buy limit: ").append(o.get("limit").getAsInt()).append(" per 4h\n");
-			}
-			sb.append("  https://prices.runescape.wiki/osrs/item/").append(id).append('\n');
+			sb.append("- ").append(price.getName()).append(": ")
+				.append(String.format(Locale.US, "%,d", itemManager.getItemPrice(price.getId()))).append(" gp\n");
 		}
 		return sb.toString();
 	}
 
-	private static void appendPrice(StringBuilder sb, String label, JsonObject p, String key, String timeKey, long now)
+	static boolean isWiki(String address)
 	{
-		JsonElement v = p.get(key);
-		if (v == null || v.isJsonNull())
-		{
-			return;
-		}
-		sb.append("  ").append(label).append(": ").append(String.format(Locale.US, "%,d", v.getAsLong()))
-			.append(" gp");
-		JsonElement t = p.get(timeKey);
-		if (t != null && !t.isJsonNull())
-		{
-			long minutes = Math.max(0, (now - t.getAsLong()) / 60);
-			sb.append(" (").append(minutes < 60 ? minutes + " min" : (minutes / 60) + " h").append(" ago)");
-		}
-		sb.append('\n');
+		HttpUrl url = HttpUrl.parse(address);
+		return url != null && (url.host().equals(WIKI_DOMAIN) || url.host().endsWith("." + WIKI_DOMAIN));
 	}
 
 	private String openPage(String rawUrl) throws IOException
@@ -398,12 +306,16 @@ public class WebTools
 		{
 			return "Invalid address: " + rawUrl;
 		}
+		if (isWiki(url.toString()))
+		{
+			return WIKI_REFUSAL;
+		}
 		if (isPrivateHost(url.host()))
 		{
 			return "Local addresses are not allowed.";
 		}
 
-		String body = get(url.toString(), url.host().endsWith("runescape.wiki") ? WIKI_UA : BROWSER_UA);
+		String body = get(url.toString(), BROWSER_UA);
 		String text = body.trim().startsWith("<") ? htmlToText(body) : body;
 		return "Content of " + url + ":\n\n" + truncate(text, MAX_PAGE_CHARS);
 	}
@@ -432,6 +344,11 @@ public class WebTools
 
 		try (Response response = httpClient.newCall(request).execute())
 		{
+			// Um redirecionamento também não pode acabar na wiki
+			if (isWiki(response.request().url().toString()))
+			{
+				throw new IOException(WIKI_REFUSAL);
+			}
 			ResponseBody body = response.body();
 			if (!response.isSuccessful() || body == null)
 			{

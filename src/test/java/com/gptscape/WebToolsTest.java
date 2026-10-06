@@ -3,6 +3,8 @@ package com.gptscape;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import okhttp3.OkHttpClient;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import org.junit.Test;
@@ -29,21 +31,9 @@ public class WebToolsTest
 	}
 
 	@Test
-	public void precoGe()
-	{
-		assertTrue(run("ge_price", "item", "Twisted bow").contains(" gp"));
-	}
-
-	@Test
 	public void noticias()
 	{
 		assertTrue(run("osrs_news", null, null).contains("https://secure.runescape.com/m=news/"));
-	}
-
-	@Test
-	public void wiki()
-	{
-		assertTrue(run("osrs_wiki", "query", "Theatre of Blood").contains("Ver Sinhaza"));
 	}
 
 	@Test
@@ -55,6 +45,25 @@ public class WebToolsTest
 	@Test
 	public void abrirPagina()
 	{
-		assertTrue(run("open_page", "url", "https://oldschool.runescape.wiki/w/Abyssal_whip").contains("whip"));
+		assertTrue(run("open_page", "url", "https://secure.runescape.com/m=news/archive?oldschool=1")
+			.contains("Old School"));
+	}
+
+	/** A política de IA da RuneScape Wiki proíbe usar o conteúdo dela: nenhuma página desse domínio é lida. */
+	@Test
+	public void nuncaLeAWiki()
+	{
+		assertTrue(WebTools.isWiki("https://oldschool.runescape.wiki/w/Abyssal_whip"));
+		assertTrue(WebTools.isWiki("https://prices.runescape.wiki/api/v1/osrs/latest"));
+		assertTrue(WebTools.isWiki("https://runescape.wiki/w/Abyssal_whip"));
+		assertFalse(WebTools.isWiki("https://secure.runescape.com/m=news/archive?oldschool=1"));
+		assertFalse(WebTools.isWiki("https://example.com/runescape.wiki"));
+
+		JsonObject args = new JsonObject();
+		args.addProperty("url", "https://oldschool.runescape.wiki/w/Abyssal_whip");
+		assertEquals(WebTools.WIKI_REFUSAL, tools.execute("open_page", args));
+
+		String declared = tools.toolDeclarations().toString();
+		assertFalse(declared.contains("osrs_wiki"));
 	}
 }

@@ -6,7 +6,7 @@
 
 GPTScape is an AI assistant for Old School RuneScape, built directly into the [RuneLite](https://runelite.net/) sidebar.
 
-Ask about gear, quests, bosses, money makers or prices without leaving the game. GPTScape runs on the Google Gemini API with your own free API key, streams its answers as they are written, remembers the conversation, and can look things up on the OSRS Wiki, the official news page and the Grand Exchange.
+Ask about gear, quests, bosses, money makers or prices without leaving the game. GPTScape runs on the Google Gemini API with your own free API key, streams its answers as they are written, remembers the conversation, and can search the web, read the official news page and check Grand Exchange prices.
 
 <p align="center">
   <img src="docs/images/gptscape-welcome.png" alt="GPTScape welcome screen in the RuneLite sidebar, with suggested questions and the message box" width="242">
@@ -21,7 +21,7 @@ GPTScape only answers questions. It does not automate gameplay or perform any ac
 - **Streaming replies:** answers appear as they are written instead of all at once.
 - **Conversation memory:** follow-up questions keep the context of earlier messages.
 - **Multilingual conversations:** the interface is in English, but GPTScape replies in whatever language you write in and switches when you do. Official OSRS names such as Theatre of Blood or Zulrah are kept untranslated.
-- **Web access:** when enabled, GPTScape can search the web, read official OSRS news, check the OSRS Wiki and look up live Grand Exchange prices. The panel shows each lookup as it happens ("Checking price: Twisted bow").
+- **Web access:** when enabled, GPTScape can search the web, read official OSRS news and look up current Grand Exchange prices. The panel shows each lookup as it happens ("Checking price: Twisted bow").
 - **Markdown rendering:** headings, bold, italic, inline code, lists, tables, links and code blocks with a **Copy code** button.
 - **Message actions:** **Copy** a reply, **Regenerate** the latest one, or **Try again** after a failed request.
 - **Stop and start over:** stop a reply at any time, start a **New chat** or clear the current one.
@@ -73,7 +73,7 @@ GPTScape is under review for the [RuneLite Plugin Hub](https://runelite.net/plug
 | Section | Option | Default | Description |
 | --- | --- | --- | --- |
 | — | Gemini API Key | — | API key used to connect to the Google Gemini API. |
-| Conversation | Web Access | On | Lets GPTScape look things up online: web search, OSRS news, the OSRS Wiki and live GE prices. |
+| Conversation | Web Access | On | Lets GPTScape look things up: web search, official OSRS news and current GE prices. |
 | Conversation | Save Chat History | On | Keeps the current chat on your computer after restarting RuneLite. |
 | Conversation | Share Game Stats | Off | Sends your combat and skill levels with each message. Your character name is never shared. |
 | Advanced Settings | Gemini Model | `gemini-3.5-flash-lite` | Model used for replies. Falls back to another free model if it is unavailable. |
@@ -118,7 +118,8 @@ Things to know:
 - **API key handling:** the key is sent in the `x-goog-api-key` header. It is never placed in the URL, in the prompt or in logs.
 - **Threading:** network calls run on a small background executor. UI updates are batched every 50 ms on the Swing Event Dispatch Thread, and only the reply being generated is re-rendered.
 - **Context:** the most recent messages (30 by default) are sent with each request so follow-up questions make sense.
-- **Web tools:** when Web Access is on, the model can call five tools: web search, official OSRS news, the OSRS Wiki, real-time GE prices from the OSRS Wiki prices API, and opening a page. Requests are only made while answering your message; nothing runs in the background.
+- **Web tools:** when Web Access is on, the model can call four tools: web search, official OSRS news, Grand Exchange prices from RuneLite's own price data, and opening a page. Requests are only made while answering your message; nothing runs in the background.
+- **No wiki content:** the [RuneScape Wiki's generative AI policy](https://meta.runescape.wiki/w/Meta:Generative_AI_policy) does not allow its content to be used with AI tools, so GPTScape never reads the wiki. Wiki pages are refused, wiki results are dropped from web searches, and no request is ever made to `runescape.wiki`. GPTScape may still link to a wiki page for you to read yourself.
 - **Game stats:** when Share Game Stats is on and you are logged in, your combat level, total level and skill levels are read from the client and added to the request.
 
 Built with Java 11, Swing, the RuneLite plugin API, and RuneLite's own OkHttp and Gson instances.
@@ -127,7 +128,7 @@ Built with Java 11, Swing, the RuneLite plugin API, and RuneLite's own OkHttp an
 
 - Your messages are sent to Google's Gemini API using your own key.
 - Your API key is stored in your RuneLite configuration and is only sent to Google.
-- With Web Access on, search terms and the pages being opened are requested from third-party websites, including DuckDuckGo, the official Old School RuneScape website and the OSRS Wiki.
+- With Web Access on, search terms and the pages being opened are requested from third-party websites, including DuckDuckGo and the official Old School RuneScape website.
 - Game stats are shared only if you enable **Share Game Stats**. Your character name is never sent.
 - Saved chats are stored locally at `.runelite/gemini-chat/conversation.json` and contain only the role, text and timestamp of each message.
 - GPTScape never needs your RuneScape login details and will never ask for them.

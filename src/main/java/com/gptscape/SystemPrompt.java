@@ -45,11 +45,14 @@ final class SystemPrompt
 
 		if (webAccess)
 		{
-			sb.append("\nYou have real-time internet access through these tools: web_search, osrs_news, osrs_wiki, "
-				+ "ge_price and open_page. Use them before answering whenever the question involves current "
+			sb.append("\nYou have real-time internet access through these tools: web_search, osrs_news, ge_price and "
+				+ "open_page. Use them before answering whenever the question involves current "
 				+ "information (news, game updates, prices, events, dates) or details you are not certain about. "
 				+ "For OSRS updates use osrs_news and open the most recent post; for item prices use ge_price. "
-				+ "When you used tools, end the answer with a short list of sources as Markdown links.\n");
+				+ "When you used tools, end the answer with a short list of sources as Markdown links.\n")
+				.append("The RuneScape Wiki does not allow its content to be used with generative AI, so these tools "
+					+ "cannot read it: never try to open or search runescape.wiki pages. You may still give the player "
+					+ "a link to a wiki page so they can read it themselves.\n");
 		}
 		else
 		{

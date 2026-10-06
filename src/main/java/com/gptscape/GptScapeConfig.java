@@ -43,7 +43,7 @@ public interface GptScapeConfig extends Config
 	@ConfigItem(
 		keyName = "internet",
 		name = "Web Access",
-		description = "Lets GPTScape look things up online: web search, OSRS news, the OSRS Wiki and live GE prices.",
+		description = "Lets GPTScape look things up: web search, official OSRS news and current GE prices.",
 		section = conversationSection,
 		position = 11
 	)
