@@ -19,6 +19,10 @@ import net.runelite.client.callback.ClientThread;
 @Singleton
 public class RuneLiteGameContextProvider implements GameContextProvider
 {
+	private static final String ACCOUNT_TOOLS_HINT = "The player lets you read more about their own account with the "
+		+ "account_* tools. Call them whenever an answer depends on the player's own account, instead of asking "
+		+ "the player or guessing.";
+
 	private final Client client;
 	private final ClientThread clientThread;
 	private final GptScapeConfig config;
@@ -34,9 +38,16 @@ public class RuneLiteGameContextProvider implements GameContextProvider
 	@Override
 	public String describe()
 	{
-		if (!config.shareGameStats() || client.getGameState() != GameState.LOGGED_IN)
+		boolean accountTools = config.shareAccountData() || config.shareBank();
+		if ((!config.shareGameStats() && !accountTools) || client.getGameState() != GameState.LOGGED_IN)
 		{
 			return "";
+		}
+
+		String tools = accountTools ? ACCOUNT_TOOLS_HINT : "";
+		if (!config.shareGameStats())
+		{
+			return tools;
 		}
 
 		// A API do cliente deve ser lida na thread do cliente
@@ -55,12 +66,12 @@ public class RuneLiteGameContextProvider implements GameContextProvider
 
 		try
 		{
-			return snapshot.get(2, TimeUnit.SECONDS);
+			return snapshot.get(2, TimeUnit.SECONDS) + (tools.isEmpty() ? "" : "\n" + tools);
 		}
 		catch (Exception e)
 		{
 			log.debug("Could not read game stats for Gemini context", e);
-			return "";
+			return tools;
 		}
 	}
 

@@ -326,6 +326,17 @@ public class GptScapePanel extends PluginPanel
 		stats.setToolTipText("Send your combat and skill levels with each message");
 		stats.addActionListener(e -> configManager.setConfiguration(GptScapeConfig.GROUP, "shareGameStats", stats.isSelected()));
 		menu.add(stats);
+
+		JCheckBoxMenuItem account = new JCheckBoxMenuItem("Share account details", config.shareAccountData());
+		account.setToolTipText("Let GPTScape read your quests, diaries, gear, inventory, Slayer task and GE offers");
+		account.addActionListener(e ->
+			configManager.setConfiguration(GptScapeConfig.GROUP, "shareAccountData", account.isSelected()));
+		menu.add(account);
+
+		JCheckBoxMenuItem bank = new JCheckBoxMenuItem("Share bank", config.shareBank());
+		bank.setToolTipText("Let GPTScape read the items in your bank (open your bank once first)");
+		bank.addActionListener(e -> configManager.setConfiguration(GptScapeConfig.GROUP, "shareBank", bank.isSelected()));
+		menu.add(bank);
 		return menu;
 	}
 

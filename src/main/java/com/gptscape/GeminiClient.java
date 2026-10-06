@@ -67,10 +67,17 @@ public class GeminiClient
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final WebTools webTools;
+	/** Consultas à conta do jogador; null fora do cliente (testes e ferramentas de desenvolvimento). */
+	private final GameTools gameTools;
 	private ExecutorService executor;
 
-	@Inject
 	GeminiClient(OkHttpClient httpClient, Gson gson, WebTools webTools)
+	{
+		this(httpClient, gson, webTools, null);
+	}
+
+	@Inject
+	GeminiClient(OkHttpClient httpClient, Gson gson, WebTools webTools, GameTools gameTools)
 	{
 		// Timeouts próprios: conexão curta, leitura tolerante ao "thinking" do modelo e às pausas do stream
 		this.httpClient = httpClient.newBuilder()
@@ -80,6 +87,7 @@ public class GeminiClient
 			.build();
 		this.gson = gson;
 		this.webTools = webTools;
+		this.gameTools = gameTools;
 	}
 
 	/** Recebe o progresso de uma geração. Chamado fora da EDT. */
@@ -291,8 +299,9 @@ public class GeminiClient
 		while (true)
 		{
 			checkCancelled(generation);
-			boolean offerTools = request.isWebAccess() && round < MAX_TOOL_ROUNDS;
-			JsonObject body = buildRequest(system, contents, offerTools ? webTools.toolDeclarations() : null, lowThinking);
+			JsonObject tools = round < MAX_TOOL_ROUNDS ? toolDeclarations(request.isWebAccess()) : null;
+			boolean offerTools = tools != null;
+			JsonObject body = buildRequest(system, contents, tools, lowThinking);
 
 			Turn turn;
 			try
@@ -330,6 +339,25 @@ public class GeminiClient
 		}
 	}
 
+	/** Ferramentas web (se ativadas) mais as consultas à conta que o usuário liberou; null se não houver nenhuma. */
+	private JsonObject toolDeclarations(boolean webAccess)
+	{
+		JsonObject declarations = webAccess ? webTools.toolDeclarations() : null;
+		JsonArray gameDeclarations = gameTools != null ? gameTools.declarations() : new JsonArray();
+		if (gameDeclarations.size() == 0)
+		{
+			return declarations;
+		}
+		if (declarations == null)
+		{
+			declarations = new JsonObject();
+			declarations.add("functionDeclarations", gameDeclarations);
+			return declarations;
+		}
+		declarations.getAsJsonArray("functionDeclarations").addAll(gameDeclarations);
+		return declarations;
+	}
+
 	private JsonObject runTools(Generation generation, List<JsonObject> calls, StreamListener listener)
 		throws GeminiException
 	{
@@ -341,11 +369,12 @@ public class GeminiClient
 			JsonObject args = call.has("args") && call.get("args").isJsonObject()
 				? call.getAsJsonObject("args") : new JsonObject();
 
-			listener.onStatus(WebTools.describe(name, args));
+			boolean gameTool = gameTools != null && gameTools.handles(name);
+			listener.onStatus(gameTool ? GameTools.describe(name) : WebTools.describe(name, args));
 			String result;
 			try
 			{
-				result = webTools.execute(name, args);
+				result = gameTool ? gameTools.execute(name, args) : webTools.execute(name, args);
 			}
 			catch (RuntimeException e)
 			{

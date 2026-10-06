@@ -27,6 +27,8 @@ GPTScape only answers questions. It does not automate gameplay or perform any ac
 - **Stop and start over:** stop a reply at any time, start a **New chat** or clear the current one.
 - **Saved chat history:** the current chat is kept on your computer between RuneLite restarts. This can be turned off.
 - **Optional game stats:** off by default. When enabled, your combat level, total level and skill levels are sent with each message so answers fit your account.
+- **Optional account details:** off by default. When enabled, GPTScape can look up your account type, quests, Achievement Diaries, worn gear, inventory, Slayer task and Grand Exchange offers, but only when a question needs them ("Is my setup good for Vorkath?").
+- **Optional bank access:** off by default, with its own switch. Lets GPTScape check what you own ("What can I afford to upgrade?").
 - **Model fallback:** if the selected Gemini model is unavailable or out of free quota, GPTScape automatically tries the next one.
 
 ## How to use
@@ -37,7 +39,7 @@ GPTScape only answers questions. It does not automate gameplay or perform any ac
 4. Type a question in the message box.
 5. Press **Enter** to send. Use **Shift+Enter** for a new line.
 
-The **+** button under the message box toggles web access and game stats sharing. The **⋯** menu at the top lets you start a new chat, clear the chat or change your API key.
+The **+** button under the message box toggles web access and what you share about your account: game stats, account details and bank. The **⋯** menu at the top lets you start a new chat, clear the chat or change your API key.
 
 You can ask questions such as:
 
@@ -47,6 +49,13 @@ You can ask questions such as:
 - "What's a good money maker for my stats?"
 - "Price check a Twisted bow."
 - "Explain Zulrah rotations."
+
+With account details or bank sharing turned on, you can also ask about your own account:
+
+- "Which quest should I do next?"
+- "Is my current setup good for Vorkath?"
+- "What's left for my Ardougne Diary?"
+- "What can I afford to upgrade with my bank?"
 
 You can also ask in your own language, for example "Como eu faço Vorkath?" or "¿Cómo se hace Vorkath?", and GPTScape will answer in that language.
 
@@ -76,6 +85,8 @@ GPTScape is under review for the [RuneLite Plugin Hub](https://runelite.net/plug
 | Conversation | Web Access | On | Lets GPTScape look things up: web search, official OSRS news and current GE prices. |
 | Conversation | Save Chat History | On | Keeps the current chat on your computer after restarting RuneLite. |
 | Conversation | Share Game Stats | Off | Sends your combat and skill levels with each message. Your character name is never shared. |
+| Conversation | Share Account Details | Off | Lets GPTScape read your account type, quests, diaries, worn gear, inventory, Slayer task and GE offers when a question needs them. |
+| Conversation | Share Bank | Off | Lets GPTScape read the items in your bank when a question needs them. Open your bank once after starting RuneLite so the plugin can see it. |
 | Advanced Settings | Gemini Model | `gemini-3.5-flash-lite` | Model used for replies. Falls back to another free model if it is unavailable. |
 | Advanced Settings | System Prompt | Empty | Optional extra instructions, for example "Keep answers short." |
 | Advanced Settings | Conversation History | 30 | How many recent messages are sent as context (2 to 100). Older messages stay visible in the chat. |
@@ -121,6 +132,7 @@ Things to know:
 - **Web tools:** when Web Access is on, the model can call four tools: web search, official OSRS news, Grand Exchange prices from RuneLite's own price data, and opening a page. Requests are only made while answering your message; nothing runs in the background.
 - **No wiki content:** the [RuneScape Wiki's generative AI policy](https://meta.runescape.wiki/w/Meta:Generative_AI_policy) does not allow its content to be used with AI tools, so GPTScape never reads the wiki. Wiki pages are refused, wiki results are dropped from web searches, and no request is ever made to `runescape.wiki`. GPTScape may still link to a wiki page for you to read yourself.
 - **Game stats:** when Share Game Stats is on and you are logged in, your combat level, total level and skill levels are read from the client and added to the request.
+- **Account lookups:** Share Account Details and Share Bank work like the web tools. The model asks for one specific thing (for example, your quests) only when your question needs it, and the plugin reads it from the client at that moment. Bank contents are only visible to RuneLite while the bank is open, so the plugin keeps the last seen contents in memory until you log out.
 
 Built with Java 11, Swing, the RuneLite plugin API, and RuneLite's own OkHttp and Gson instances.
 
@@ -129,7 +141,8 @@ Built with Java 11, Swing, the RuneLite plugin API, and RuneLite's own OkHttp an
 - Your messages are sent to Google's Gemini API using your own key.
 - Your API key is stored in your RuneLite configuration and is only sent to Google.
 - With Web Access on, search terms and the pages being opened are requested from third-party websites, including DuckDuckGo and the official Old School RuneScape website.
-- Game stats are shared only if you enable **Share Game Stats**. Your character name is never sent.
+- Game stats, account details and bank contents are shared only if you enable the matching option, and all three are off by default. Your character name is never sent.
+- Everything GPTScape reads from the game is read-only. It never clicks, types or changes anything in the game.
 - Saved chats are stored locally at `.runelite/gemini-chat/conversation.json` and contain only the role, text and timestamp of each message.
 - GPTScape never needs your RuneScape login details and will never ask for them.
 

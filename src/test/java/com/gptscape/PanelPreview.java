@@ -39,6 +39,8 @@ public final class PanelPreview
 						return true;
 					case "saveHistory":
 					case "shareGameStats":
+					case "shareAccountData":
+					case "shareBank":
 						return false;
 					case "maxHistory":
 						return 30;

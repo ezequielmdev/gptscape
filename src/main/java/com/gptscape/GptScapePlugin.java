@@ -6,6 +6,10 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -36,6 +40,9 @@ public class GptScapePlugin extends Plugin
 
 	@Inject
 	private ChatHistoryStore historyStore;
+
+	@Inject
+	private GameTools gameTools;
 
 	/** Modelos que versões anteriores do plugin salvavam sozinhas e que hoje não funcionam bem. */
 	private static final Set<String> OLD_DEFAULT_MODELS = ImmutableSet.of(
@@ -100,6 +107,24 @@ public class GptScapePlugin extends Plugin
 				break;
 			default:
 				break;
+		}
+	}
+
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() == InventoryID.BANK)
+		{
+			gameTools.onBankChanged(event.getItemContainer());
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			gameTools.forgetBank();
 		}
 	}
 

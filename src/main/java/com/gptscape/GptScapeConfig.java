@@ -78,6 +78,32 @@ public interface GptScapeConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "shareAccountData",
+		name = "Share Account Details",
+		description = "Lets GPTScape read your account type, quests, diaries, worn gear, inventory, Slayer task "
+			+ "and GE offers when a question needs them. Your character name is never shared.",
+		section = conversationSection,
+		position = 14
+	)
+	default boolean shareAccountData()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "shareBank",
+		name = "Share Bank",
+		description = "Lets GPTScape read the items in your bank when a question needs them. "
+			+ "Open your bank once after starting RuneLite so the plugin can see it.",
+		section = conversationSection,
+		position = 15
+	)
+	default boolean shareBank()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "model",
 		name = "Gemini Model",
 		description = "Google Gemini model GPTScape uses. If it's unavailable, the plugin automatically falls back to another free model.",
