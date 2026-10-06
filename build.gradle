@@ -1,0 +1,51 @@
+plugins {
+	id 'java'
+}
+
+repositories {
+	mavenLocal()
+	maven {
+		url = 'https://repo.runelite.net'
+		content {
+			includeGroupByRegex('net\\.runelite.*')
+		}
+	}
+	mavenCentral()
+}
+
+def runeLiteVersion = 'latest.release'
+
+dependencies {
+	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+	compileOnly 'org.projectlombok:lombok:1.18.38'
+	annotationProcessor 'org.projectlombok:lombok:1.18.38'
+
+	testImplementation 'junit:junit:4.13.2'
+	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+}
+
+group = 'com.runebot'
+version = '1.0.0'
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	options.release.set(11)
+}
+
+// Capturas do painel para desenvolvimento (não faz parte do plugin): ./gradlew preview
+tasks.register('preview', JavaExec) {
+	group = 'verification'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.runebot.PanelPreview'
+}
+
+// Executa o RuneLite com o plugin carregado: ./gradlew run
+tasks.register('run', JavaExec) {
+	group = 'application'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.runebot.RuneBotPluginTest'
+	jvmArgs '-ea'
+	args '--developer-mode'
+}
