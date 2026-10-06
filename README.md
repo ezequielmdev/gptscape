@@ -1,13 +1,13 @@
-# RuneBot (RuneLite plugin)
+# GPTScape (RuneLite plugin)
 
-RuneBot is an AI assistant for Old School RuneScape in the RuneLite sidebar, powered by the **official Google Gemini API** (free tier).
+GPTScape is an AI assistant for Old School RuneScape in the RuneLite sidebar, powered by the **official Google Gemini API** (free tier).
 
 ## Features
 
 - **Streaming replies**: answers appear word by word, like modern AI chats.
 - **Remembers the conversation**: follow-up questions keep their context (user/model history).
-- **Replies in your language**: the interface is in English, but RuneBot answers in whatever language you write in and switches when you do. Official OSRS names (Theatre of Blood, Zulrah…) are kept untranslated.
-- **Web access (free)**: RuneBot can search the web, read official OSRS news, check the OSRS Wiki and live Grand Exchange prices. The panel shows each lookup ("Searching…", "Checking price…").
+- **Replies in your language**: the interface is in English, but GPTScape answers in whatever language you write in and switches when you do. Official OSRS names (Theatre of Blood, Zulrah…) are kept untranslated.
+- **Web access (free)**: GPTScape can search the web, read official OSRS news, check the OSRS Wiki and live Grand Exchange prices. The panel shows each lookup ("Searching…", "Checking price…").
 - **Markdown**: headings, bold, italic, inline code, lists, tables, links and code blocks with **Copy code**.
 - **Message actions**: Copy, Regenerate (last reply) and Try again (failed replies).
 - **Stop** a reply at any time; **New chat** starts fresh.
@@ -17,7 +17,7 @@ RuneBot is an AI assistant for Old School RuneScape in the RuneLite sidebar, pow
 ## Setup
 
 1. Get a free API key at https://aistudio.google.com/apikey (no credit card required).
-2. Open the RuneBot panel in RuneLite and paste the key, or set **Configuration → RuneBot → Gemini API Key**.
+2. Open the GPTScape panel in RuneLite and paste the key, or set **Configuration → GPTScape → Gemini API Key**.
 
 ## Settings
 
@@ -56,7 +56,7 @@ Your key stays the same and the plugin needs no changes. With `gemini-3.5-flash-
 ```bash
 ./gradlew run        # RuneLite with the plugin loaded (Windows: gradlew.bat run)
 ./gradlew build      # compile + unit tests
-GEMINI_API_KEY=your_key ./gradlew test --tests com.runebot.GeminiClientTest   # live API tests
-WEB_TOOLS_TEST=1 ./gradlew test --tests com.runebot.WebToolsTest            # live web tools tests
+GEMINI_API_KEY=your_key ./gradlew test --tests com.gptscape.GeminiClientTest   # live API tests
+WEB_TOOLS_TEST=1 ./gradlew test --tests com.gptscape.WebToolsTest            # live web tools tests
 GEMINI_API_KEY=your_key ./gradlew preview   # renders panel screenshots to build/preview
 ```

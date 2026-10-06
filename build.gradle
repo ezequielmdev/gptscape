@@ -26,7 +26,7 @@ dependencies {
 	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
 }
 
-group = 'com.runebot'
+group = 'com.gptscape'
 version = '1.0.0'
 
 tasks.withType(JavaCompile).configureEach {
@@ -38,14 +38,14 @@ tasks.withType(JavaCompile).configureEach {
 tasks.register('preview', JavaExec) {
 	group = 'verification'
 	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'com.runebot.PanelPreview'
+	mainClass = 'com.gptscape.PanelPreview'
 }
 
 // Executa o RuneLite com o plugin carregado: ./gradlew run
 tasks.register('run', JavaExec) {
 	group = 'application'
 	classpath = sourceSets.test.runtimeClasspath
-	mainClass = 'com.runebot.RuneBotPluginTest'
+	mainClass = 'com.gptscape.GptScapePluginTest'
 	jvmArgs '-ea'
 	args '--developer-mode'
 }
