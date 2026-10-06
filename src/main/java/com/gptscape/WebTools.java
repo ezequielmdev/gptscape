@@ -73,6 +73,15 @@ public class WebTools
 			.connectTimeout(10, TimeUnit.SECONDS)
 			.readTimeout(20, TimeUnit.SECONDS)
 			.followRedirects(true)
+			// Vale para toda requisição, inclusive redirecionamentos: nada é enviado à wiki
+			.addNetworkInterceptor(chain ->
+			{
+				if (isWiki(chain.request().url().toString()))
+				{
+					throw new IOException(WIKI_REFUSAL);
+				}
+				return chain.proceed(chain.request());
+			})
 			.build();
 		this.gson = gson;
 		this.itemManager = itemManager;
@@ -184,8 +193,12 @@ public class WebTools
 		HttpUrl url = HttpUrl.parse("https://lite.duckduckgo.com/lite/").newBuilder()
 			.addQueryParameter("q", query)
 			.build();
-		String html = get(url.toString(), BROWSER_UA);
+		return searchResults(query, get(url.toString(), BROWSER_UA));
+	}
 
+	/** Extrai os resultados da página de busca, sem os anúncios e sem nada da wiki. */
+	static String searchResults(String query, String html)
+	{
 		StringBuilder sb = new StringBuilder("Search results for \"" + query + "\":\n\n");
 		Matcher m = DDG_RESULT.matcher(html);
 		int count = 0;
@@ -296,7 +309,12 @@ public class WebTools
 	static boolean isWiki(String address)
 	{
 		HttpUrl url = HttpUrl.parse(address);
-		return url != null && (url.host().equals(WIKI_DOMAIN) || url.host().endsWith("." + WIKI_DOMAIN));
+		if (url == null)
+		{
+			// Endereço que não dá para interpretar: na dúvida, trata como wiki se mencionar o domínio
+			return address.toLowerCase(Locale.ROOT).contains(WIKI_DOMAIN);
+		}
+		return url.host().equals(WIKI_DOMAIN) || url.host().endsWith("." + WIKI_DOMAIN);
 	}
 
 	private String openPage(String rawUrl) throws IOException
@@ -344,11 +362,6 @@ public class WebTools
 
 		try (Response response = httpClient.newCall(request).execute())
 		{
-			// Um redirecionamento também não pode acabar na wiki
-			if (isWiki(response.request().url().toString()))
-			{
-				throw new IOException(WIKI_REFUSAL);
-			}
 			ResponseBody body = response.body();
 			if (!response.isSuccessful() || body == null)
 			{

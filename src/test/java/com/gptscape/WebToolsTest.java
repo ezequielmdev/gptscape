@@ -66,4 +66,25 @@ public class WebToolsTest
 		String declared = tools.toolDeclarations().toString();
 		assertFalse(declared.contains("osrs_wiki"));
 	}
+
+	/** Resultados de busca que apontam para a wiki são descartados, com título e trecho. */
+	@Test
+	public void buscaDescartaResultadosDaWiki()
+	{
+		String html = result("https://oldschool.runescape.wiki/w/Vorkath", "Vorkath - OSRS Wiki", "Wiki text about Vorkath")
+			+ result("//duckduckgo.com/l/?uddg=https%3A%2F%2Foldschool.runescape.wiki%2Fw%2FZulrah&amp;rut=1", "Zulrah",
+			"Wiki text about Zulrah")
+			+ result("https://example.com/vorkath-guide", "Vorkath guide", "A guide from another site");
+
+		String results = WebTools.searchResults("vorkath", html);
+		assertTrue(results, results.contains("https://example.com/vorkath-guide"));
+		assertFalse(results, results.contains("runescape.wiki"));
+		assertFalse(results, results.contains("Wiki text"));
+	}
+
+	private static String result(String href, String title, String snippet)
+	{
+		return "<a rel=\"nofollow\" href=\"" + href + "\" class='result-link'>" + title + "</a>"
+			+ "<td class='result-snippet'>" + snippet + "</td>";
+	}
 }
