@@ -122,7 +122,7 @@ public class GeminiClient
 			Future<?> f = future;
 			if (f != null)
 			{
-				f.cancel(true);
+				f.cancel(false);
 			}
 		}
 
@@ -150,12 +150,12 @@ public class GeminiClient
 		executor();
 	}
 
-	/** Cancela tudo e encerra a thread do cliente (plugin desativado). */
+	/** Encerra a thread do cliente (plugin desativado); gerações em andamento devem ser canceladas antes. */
 	public synchronized void stop()
 	{
 		if (executor != null)
 		{
-			executor.shutdownNow();
+			executor.shutdown();
 			executor = null;
 		}
 	}
@@ -757,7 +757,7 @@ public class GeminiClient
 
 	private static void checkCancelled(Generation generation) throws GeminiException
 	{
-		if (generation.isCancelled() || Thread.currentThread().isInterrupted())
+		if (generation.isCancelled())
 		{
 			throw new GeminiException(GeminiException.Kind.CANCELLED, "Cancelled");
 		}

@@ -57,7 +57,8 @@ public final class PanelPreview
 		Gson gson = new Gson();
 		GeminiClient client = new GeminiClient(http, gson, new WebTools(http, gson));
 		client.start();
-		ChatHistoryStore store = new ChatHistoryStore(gson, new File(out, "history.json"));
+		ChatHistoryStore store = new ChatHistoryStore(gson,
+			net.runelite.client.util.Filepath.Unchecked.getRooted(out.toPath().toAbsolutePath()).joinSegment("history.json"));
 
 		SwingUtilities.invokeAndWait(() ->
 		{

@@ -3,14 +3,11 @@ package com.gptscape;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
-import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,11 +19,11 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
+import net.runelite.client.util.Filepath;
 
 /**
- * Salva a conversa atual em .runelite/gemini-chat/conversation.json (somente papel, texto e horário;
- * nunca a API key). Toda leitura/escrita acontece numa thread de I/O própria.
+ * Salva a conversa atual em .runelite/plugin-data/gptscape/conversation.json (somente papel, texto e
+ * horário; nunca a API key). Toda leitura/escrita acontece numa thread de I/O própria.
  */
 @Slf4j
 @Singleton
@@ -38,19 +35,27 @@ public class ChatHistoryStore
 	}.getType();
 
 	private final Gson gson;
-	private final File file;
+	/** Definido em {@link #start(Filepath)}; null enquanto o diretório do plugin não está disponível. */
+	private volatile Filepath file;
 	private ExecutorService io;
 
 	@Inject
 	ChatHistoryStore(Gson gson)
 	{
-		this(gson, new File(new File(RuneLite.RUNELITE_DIR, "gemini-chat"), "conversation.json"));
+		this.gson = gson;
 	}
 
-	ChatHistoryStore(Gson gson, File file)
+	ChatHistoryStore(Gson gson, Filepath file)
 	{
 		this.gson = gson;
 		this.file = file;
+	}
+
+	/** @param file arquivo da conversa, dentro do diretório do plugin; null desativa o histórico salvo */
+	public synchronized void start(Filepath file)
+	{
+		this.file = file;
+		start();
 	}
 
 	public synchronized void start()
@@ -78,13 +83,12 @@ public class ChatHistoryStore
 		{
 			if (!io.awaitTermination(2, TimeUnit.SECONDS))
 			{
-				io.shutdownNow();
+				log.debug("Gemini chat history writes did not finish in time");
 			}
 		}
 		catch (InterruptedException e)
 		{
-			io.shutdownNow();
-			Thread.currentThread().interrupt();
+			log.debug("Interrupted while waiting for Gemini chat history writes", e);
 		}
 		io = null;
 	}
@@ -121,11 +125,12 @@ public class ChatHistoryStore
 
 	List<ChatMessage> read()
 	{
-		if (!file.isFile())
+		Filepath file = this.file;
+		if (file == null || !file.isFile())
 		{
 			return Collections.emptyList();
 		}
-		try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
+		try (Reader reader = file.openBufferedReader())
 		{
 			List<ChatMessage> loaded = gson.fromJson(reader, LIST_TYPE);
 			if (loaded == null)
@@ -151,6 +156,11 @@ public class ChatHistoryStore
 
 	void write(List<ChatMessage> messages)
 	{
+		Filepath file = this.file;
+		if (file == null)
+		{
+			return;
+		}
 		if (messages.isEmpty())
 		{
 			deleteFile();
@@ -158,19 +168,19 @@ public class ChatHistoryStore
 		}
 		try
 		{
-			Files.createDirectories(file.getParentFile().toPath());
-			File tmp = new File(file.getParentFile(), file.getName() + ".tmp");
-			try (Writer writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
+			file.getParent().createDirectories();
+			Filepath tmp = file.getParent().joinSegment(file.getFileName() + ".tmp");
+			try (Writer writer = tmp.openBufferedWriter())
 			{
 				gson.toJson(messages, LIST_TYPE, writer);
 			}
 			try
 			{
-				Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+				tmp.moveTo(file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 			}
 			catch (AtomicMoveNotSupportedException e)
 			{
-				Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				tmp.moveTo(file, StandardCopyOption.REPLACE_EXISTING);
 			}
 		}
 		catch (IOException e)
@@ -181,9 +191,14 @@ public class ChatHistoryStore
 
 	private void deleteFile()
 	{
+		Filepath file = this.file;
+		if (file == null)
+		{
+			return;
+		}
 		try
 		{
-			Files.deleteIfExists(file.toPath());
+			file.deleteIfExists();
 		}
 		catch (IOException e)
 		{

@@ -2,6 +2,7 @@ package com.gptscape;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Provides;
+import java.io.IOException;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -17,12 +18,15 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.Filepath;
 
 @Slf4j
 @PluginDescriptor(
 	name = "GPTScape",
 	description = "AI assistant for Old School RuneScape in your sidebar, powered by Google Gemini (free)",
-	tags = {"gptscape", "ai", "assistant", "chat", "gemini", "google", "chatgpt"}
+	tags = {"gptscape", "ai", "assistant", "chat", "gemini", "google", "chatgpt"},
+	internalName = "gptscape",
+	legacyDataDirectory = "gemini-chat"
 )
 public class GptScapePlugin extends Plugin
 {
@@ -59,7 +63,7 @@ public class GptScapePlugin extends Plugin
 	{
 		migrateOldSettings();
 		geminiClient.start();
-		historyStore.start();
+		historyStore.start(historyFile());
 
 		navButton = NavigationButton.builder()
 			.tooltip("GPTScape")
@@ -70,6 +74,20 @@ public class GptScapePlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 
 		onEdt(panel::onPluginStart);
+	}
+
+	/** Arquivo da conversa salva em .runelite/plugin-data/gptscape (migra o antigo .runelite/gemini-chat). */
+	private Filepath historyFile()
+	{
+		try
+		{
+			return getPluginDirectory().joinSegment("conversation.json");
+		}
+		catch (IOException | IllegalArgumentException e)
+		{
+			log.warn("Could not open the GPTScape data directory; chat history will not be saved", e);
+			return null;
+		}
 	}
 
 	@Override

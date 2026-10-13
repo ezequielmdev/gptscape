@@ -143,7 +143,7 @@ Built with Java 11, Swing, the RuneLite plugin API, and RuneLite's own OkHttp an
 - With Web Access on, search terms and the pages being opened are requested from third-party websites, including DuckDuckGo and the official Old School RuneScape website.
 - Game stats, account details and bank contents are shared only if you enable the matching option, and all three are off by default. Your character name is never sent.
 - Everything GPTScape reads from the game is read-only. It never clicks, types or changes anything in the game.
-- Saved chats are stored locally at `.runelite/gemini-chat/conversation.json` and contain only the role, text and timestamp of each message.
+- Saved chats are stored locally at `.runelite/plugin-data/gptscape/conversation.json` and contain only the role, text and timestamp of each message.
 - GPTScape never needs your RuneScape login details and will never ask for them.
 
 ## Development

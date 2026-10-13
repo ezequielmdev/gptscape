@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import net.runelite.client.util.Filepath;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -22,7 +23,7 @@ public class ChatHistoryStoreTest
 	public void salvaECarregaComAcentosEEmoji() throws Exception
 	{
 		File file = new File(folder.getRoot(), "chat/conversation.json");
-		ChatHistoryStore store = new ChatHistoryStore(new Gson(), file);
+		ChatHistoryStore store = new ChatHistoryStore(new Gson(), filepath(file));
 		store.write(Arrays.asList(ChatMessage.user("Como faço o Theatre of Blood? ção 🙂"), ChatMessage.model("**Sim**")));
 
 		List<ChatMessage> loaded = store.read();
@@ -39,14 +40,27 @@ public class ChatHistoryStoreTest
 	{
 		File file = folder.newFile("conversation.json");
 		Files.write(file.toPath(), "{not json".getBytes(StandardCharsets.UTF_8));
-		assertTrue(new ChatHistoryStore(new Gson(), file).read().isEmpty());
+		assertTrue(new ChatHistoryStore(new Gson(), filepath(file)).read().isEmpty());
 	}
 
 	@Test
 	public void listaVaziaApagaArquivo() throws Exception
 	{
 		File file = folder.newFile("conversation.json");
-		new ChatHistoryStore(new Gson(), file).write(java.util.Collections.emptyList());
+		new ChatHistoryStore(new Gson(), filepath(file)).write(java.util.Collections.emptyList());
 		assertFalse(file.exists());
+	}
+
+	@Test
+	public void semDiretorioNaoQuebra()
+	{
+		ChatHistoryStore store = new ChatHistoryStore(new Gson());
+		store.write(Arrays.asList(ChatMessage.user("oi")));
+		assertTrue(store.read().isEmpty());
+	}
+
+	private Filepath filepath(File file)
+	{
+		return Filepath.Unchecked.getRooted(folder.getRoot().toPath()).join(folder.getRoot().toPath().relativize(file.toPath()).toString());
 	}
 }
