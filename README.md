@@ -179,4 +179,8 @@ GPTScape is an informational assistant. It does not automate gameplay or perform
 
 ## License
 
+## Discord
+
+https://discord.gg/Qp3DQNp7TF
+
 GPTScape is released under the [BSD 2-Clause License](LICENSE).
